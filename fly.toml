@@ -1,0 +1,28 @@
+# fly.toml app configuration file generated for bmt-reactivities on 2024-04-18T00:58:19-05:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'bmt-reactivities'
+primary_region = 'dfw'
+
+[build]
+  image = 'ernesthodge/reactivities:latest'
+
+[env]
+  ASPNETCORE_URLS="http://+:8080"
+  Cloudinary__CloudName="drdmubksz"
+  Cloudinary__ApiKey="417621742433536"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['app']
+
+[[vm]]
+  memory = '1gb'
+  cpu_kind = 'shared'
+  cpus = 1
