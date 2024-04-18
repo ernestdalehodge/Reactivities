@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Authorization;
 using Microsoft.EntityFrameworkCore;
+using NWebsec;
 using Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -13,7 +14,8 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 
 
-builder.Services.AddControllers(opt => {
+builder.Services.AddControllers(opt =>
+{
     var policy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build();
     opt.Filters.Add(new AuthorizeFilter(policy));
 });
@@ -24,11 +26,34 @@ var app = builder.Build();
 
 app.UseMiddleware<ExceptionMiddleware>();
 
+app.UseXContentTypeOptions();
+app.UseReferrerPolicy(opt => opt.NoReferrer());
+app.UseXXssProtection(opt => opt.EnabledWithBlockMode());
+app.UseXfo(opt => opt.Deny());
+app.UseCsp(opt =>
+{
+    opt.BlockAllMixedContent()
+        .StyleSources(s => s.Self().CustomSources("https://fonts.googleapis.com"))
+        .FontSources(s => s.Self().CustomSources("https://fonts.gstatic.com", "data:"))
+        .FormActions(s => s.Self())
+        .FrameAncestors(s => s.Self())
+        .ImageSources(s => s.Self().CustomSources("blob:", "https://res.cloudinary.com"))
+        .ScriptSources(s => s.Self());
+});
+
+
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
+}
+else{
+    app.Use(async (context, next) => {
+        context.Response.Headers.Append("Strict-Transport-Security", "max-age=31536000");
+        await next();
+    });
 }
 
 app.UseCors("CorsPolicy");
@@ -55,7 +80,7 @@ try
 }
 catch (Exception ex)
 {
-   app.Logger.LogError(ex, "An error occured when migrating DB");
+    app.Logger.LogError(ex, "An error occured when migrating DB");
 }
 
 
