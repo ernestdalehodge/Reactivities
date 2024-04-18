@@ -5,7 +5,8 @@ on:
   push:
     branches:
       - 'main'
-
+env:
+    FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 jobs:
   docker:
     runs-on: ubuntu-latest
@@ -25,13 +26,13 @@ jobs:
         with:
           push: true
           tags: ernesthodge/reactivities:latest
-    deploy:
-        needs: docker
-        name: Deploy app
-        runs-on: ubuntu-latest
-        steps:
-        - uses: actions/checkout@v4
-        - uses: superfly/flyctl-actions/setup-flyctl@master
-        - run: flyctl deploy --remote-only
-            env:
-            FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+  deploy:
+    needs: docker
+    name: Deploy app
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - run: flyctl deploy --remote-only
+         
+           
