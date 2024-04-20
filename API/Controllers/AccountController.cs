@@ -5,6 +5,7 @@ using Domain;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 
 namespace API.Controllers
@@ -14,13 +15,19 @@ namespace API.Controllers
     [Route("api/[controller]")]
     public class AccountController : ControllerBase
     {
-        public UserManager<AppUser> _userManger;
+        private UserManager<AppUser> _userManger;
         private readonly TokenService _tokenService;
+        private readonly IConfiguration _config;
+        private readonly HttpClient _httpClient;
 
-        public AccountController(UserManager<AppUser> userManger, TokenService tokenService)
+        public AccountController(UserManager<AppUser> userManger, TokenService tokenService, IConfiguration config)
         {
+            this._config = config;
             this._tokenService = tokenService;
             _userManger = userManger;
+            _httpClient = new HttpClient{
+                BaseAddress = new Uri("https://graph.facebook.com/")
+            };
 
         }
 
@@ -80,6 +87,46 @@ namespace API.Controllers
             return CreateUserObject(user);
         }
 
+        [AllowAnonymous]
+        [HttpPost("fbLogin")]
+        public async Task<ActionResult<UserDto>> FacebookLogin(string accessToken)
+        {
+
+            var fbVerifyKeys = _config["Facebook:AppId"] + "|" + _config["Facebook:ApiSecret"];
+
+            // var verifyTokenResponse = await _httpClient.GetAsync($"debug_token?input_token={accessToken}&accesstoken={fbVerifyKeys}");
+
+            // if (!verifyTokenResponse.IsSuccessStatusCode) return Unauthorized();
+
+            var fbUrl = $"me?access_token={accessToken}&fields=name,email,picture.width(100).height(100)";
+
+            var fbInfo =  await _httpClient.GetFromJsonAsync<FacebookDto>(fbUrl);
+
+            var user = await _userManger.Users.Include(p=>p.Photos).FirstOrDefaultAsync(x=>x.Email == fbInfo.Email);
+
+            if(user!=null) return CreateUserObject(user);
+
+            user = new AppUser{
+                DisplayName = fbInfo.Name,
+                Email = fbInfo.Email,
+                UserName = fbInfo.Email,
+                Photos = new List<Photo>{
+                    new Photo{
+                        Id = "fb_" + fbInfo.Id,
+                        Url = fbInfo.Picture.Data.Url,
+                        IsMain= true
+                    }
+                }
+
+            };
+
+            var result =  await _userManger.CreateAsync(user);
+            if(!result.Succeeded) return BadRequest("Problem creating user account from facebook");
+
+            return CreateUserObject(user);
+
+        }
+
         private UserDto CreateUserObject(AppUser user)
         {
             return new UserDto
@@ -89,6 +136,16 @@ namespace API.Controllers
                 Token = _tokenService.CreateToken(user),
                 Username = user.UserName
             };
+        }
+
+        [HttpDelete]
+        public async Task<ActionResult> Delete(){
+            var user = await _userManger.Users.Include(p=>p.Photos).FirstOrDefaultAsync(x=>x.Email == "eblack_man@yahoo.com");
+            if(user==null) return NotFound();
+
+            await _userManger.DeleteAsync(user);
+            
+            return Ok();            
         }
 
     }
