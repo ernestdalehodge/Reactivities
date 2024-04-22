@@ -4,26 +4,26 @@ import { Button, Header, Label } from "semantic-ui-react";
 import { observer } from "mobx-react-lite";
 import { useStore } from "../../app/stores/store";
 
-export default observer(function LoginForm(){
-    const {userStore} = useStore()
-    
+export default observer(function LoginForm() {
+    const { userStore } = useStore()
+
     return (
         <Formik
-            initialValues={{email: '', password: '', error: null}}
-            onSubmit={(values, {setErrors})=> userStore.login(values).catch(() => setErrors({error: 'Invalid email or password'}))}
+            initialValues={{ email: '', password: '', error: null }}
+            onSubmit={(values, { setErrors }) => userStore.login(values).catch(error => setErrors({ error: error.response.data }))}
         >
-            {({handleSubmit, isSubmitting, errors}) => (
+            {({ handleSubmit, isSubmitting, errors }) => (
                 <Form className='ui form' onSubmit={handleSubmit} autoComplete='off'>
-                    <Header as='h2' content='Login to Reactivities' color='teal' textAlign='center'/>
+                    <Header as='h2' content='Login to Reactivities' color='teal' textAlign='center' />
                     <MyTextInput placeholder='email' name='email' />
                     <MyTextInput placeholder='password' name='password' type='password' autoComplete='false' />
-                    <ErrorMessage 
+                    <ErrorMessage
                         name='error'
-                        render={() => <Label style={{marginBottom: 10}} basic color='red' content={errors.error} />}
+                        render={() => <Label style={{ marginBottom: 10 }} basic color='red' content={errors.error} />}
                     />
-                    <Button loading={isSubmitting} positive content='Login' type='submit' fluid/>
+                    <Button loading={isSubmitting} positive content='Login' type='submit' fluid />
 
-                </Form>                
+                </Form>
             )}
         </Formik>
     )
